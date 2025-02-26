@@ -536,7 +536,7 @@ struct SoundIoOutStream {
     /// For JACK, this value is always equal to
     /// SoundIoDevice::software_latency_current of the device.
     double software_latency;
-    /// Core Audio and WASAPI only: current output Audio Unit volume. Float, 0.0-1.0.
+    /// Core Audio, WASAPI, and PulseAudio only: current output Audio Unit volume. Float, 0.0-1.0.
     float volume;
     /// Defaults to NULL. Put whatever you want here.
     void *userdata;

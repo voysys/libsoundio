@@ -835,6 +835,43 @@ static int outstream_get_latency_pa(struct SoundIoPrivate *si, struct SoundIoOut
     return 0;
 }
 
+static int outstream_set_volume_pa(struct SoundIoPrivate *si, struct SoundIoOutStreamPrivate *os, float volume) {
+    struct SoundIoOutStream *outstream = &os->pub;
+    struct SoundIoOutStreamPulseAudio *ospa = &os->backend_data.pulseaudio;
+    struct SoundIoPulseAudio *sipa = &si->backend_data.pulseaudio;
+
+    if (!SOUNDIO_ATOMIC_LOAD(ospa->stream_ready)) {
+        return SoundIoErrorStreaming;
+    }
+
+    uint32_t sink_input_index = pa_stream_get_index(ospa->stream);
+    if (sink_input_index == PA_INVALID_INDEX) {
+        return SoundIoErrorStreaming;
+    }
+
+    pa_cvolume pa_vol;
+    // Set the volume for all channels.
+    // PA_VOLUME_NORM is typically defined as 0x10000,
+    // so multiplying the normalized double (0.0–1.0) by PA_VOLUME_NORM gives the proper value.
+    pa_cvolume_set(&pa_vol, os->pub.layout.channel_count, (pa_volume_t)(volume * PA_VOLUME_NORM));
+
+    pa_operation *op = pa_context_set_sink_input_volume(sipa->pulse_context,
+                                                        sink_input_index,
+                                                        &pa_vol,
+                                                        NULL,
+                                                        NULL);
+
+    if (op) {
+        pa_operation_unref(op);
+
+        outstream->volume = volume;
+
+        return 0;
+    } else {
+        return SoundIoErrorStreaming;
+    }
+}
+
 static void recording_stream_state_callback(pa_stream *stream, void *userdata) {
     struct SoundIoInStreamPrivate *is = (struct SoundIoInStreamPrivate*)userdata;
     struct SoundIoInStreamPulseAudio *ispa = &is->backend_data.pulseaudio;
@@ -1135,6 +1172,7 @@ int soundio_pulseaudio_init(struct SoundIoPrivate *si) {
     si->outstream_clear_buffer = outstream_clear_buffer_pa;
     si->outstream_pause = outstream_pause_pa;
     si->outstream_get_latency = outstream_get_latency_pa;
+    si->outstream_set_volume = outstream_set_volume_pa;
 
     si->instream_open = instream_open_pa;
     si->instream_destroy = instream_destroy_pa;
