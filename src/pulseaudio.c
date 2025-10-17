@@ -353,11 +353,20 @@ static void server_info_callback(pa_context *pulse_context, const pa_server_info
     assert(!sipa->default_sink_name);
     assert(!sipa->default_source_name);
 
-    sipa->default_sink_name = strdup(info->default_sink_name);
-    sipa->default_source_name = strdup(info->default_source_name);
+    if (info->default_sink_name)
+        sipa->default_sink_name = strdup(info->default_sink_name);
+    else
+        sipa->default_sink_name = NULL;
 
-    if (!sipa->default_sink_name || !sipa->default_source_name)
+    if (info->default_source_name)
+        sipa->default_source_name = strdup(info->default_source_name);
+    else
+        sipa->default_source_name = NULL;
+
+    if ((info->default_sink_name && !sipa->default_sink_name) ||
+        (info->default_source_name && !sipa->default_source_name)) {
         sipa->device_query_err = SoundIoErrorNoMem;
+    }
 
     pa_threaded_mainloop_signal(sipa->main_loop, 0);
 }
